@@ -6,3 +6,5 @@ pnpm install --save class-validator class-transformer
 pnpm install --save redis
 ## 发送 email 验证码
 pnpm install nodemailer --save
+## 配置 抽离
+pnpm install --save @nestjs/config
