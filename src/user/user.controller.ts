@@ -32,12 +32,14 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   private async disposeToken(userInfo: TokenInfo) {
-    const accessToken = this.jwtService.sign({
-      userId: userInfo.id,
-      usernmae: userInfo.username,
+    const signObj: TokenInfo = {
+      id: userInfo.id,
+      username: userInfo.username,
       roles: userInfo.roles,
-      permissions: userInfo.permissions
-    }, {
+      permissions: userInfo.permissions,
+      isAdmin: userInfo.isAdmin
+    }
+    const accessToken = this.jwtService.sign(signObj, {
       expiresIn: this.configService.get('jwt_access_token_expires_time') || '30m'
     })
 
