@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { RegisterUserDto } from './dto/register.dto';
 import { RedisService } from 'src/redis/redis.service';
 import { md5 } from 'src/utils';
@@ -15,6 +15,9 @@ import { Role } from './entities/role.entity';
 import { Permission } from './entities/permission.entity';
 import { LoginUserDto } from './dto/login.dto';
 import { LoginUserVo } from './vo/login_user.vo';
+import { UserDetailVo } from './vo/user_info.vo';
+import { UpdatePasswordDto } from './dto/update_password.dto';
+import { TokenInfo } from './user.controller';
 
 @Injectable()
 export class UserService {
@@ -119,6 +122,7 @@ export class UserService {
     return {
       id: user.id,
       username: user.username,
+      email: user.email,
       isAdmin: user.isAdmin,
       roles: user.roles.map((item) => item.name),
       permissions: user.roles.reduce((arr: Permission[], role) => {
@@ -131,6 +135,52 @@ export class UserService {
         return arr;
       }, []),
     };
+  }
+  // 根据id查询用户更新验证信息
+  async findUserUpdateById(id: number) {
+    const user = await this.userRepository.findOne({
+      where: {
+        id,
+      },
+    });
+    const vo = new UserDetailVo();
+    vo.id = user.id;
+    vo.username = user.username;
+    vo.createTime = user.createTime;
+    vo.email = user.email;
+    vo.nickName = user.nickName;
+    vo.phoneNumber = user.phoneNumber;
+    vo.headPic = user.headPic;
+    vo.isFrozen = user.isFrozen;
+    return vo;
+  }
+  // 修改密码
+  async updateUserPassword(user: TokenInfo, updatePassword: UpdatePasswordDto) {
+    const captcha = await this.redisService.get(
+      `captcha_updatePassword${user.email}`,
+    );
+
+    if (!captcha) {
+      throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
+    }
+
+    if (updatePassword.captcha !== captcha) {
+      throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
+    }
+
+    const foundUser = await this.userRepository.findOneBy({
+      username: user.username,
+    });
+
+    foundUser.password = md5(updatePassword.password);
+
+    try {
+      await this.userRepository.save(foundUser);
+      return '密码修改成功';
+    } catch (e) {
+      this.logger.error(e, UserService);
+      return '密码修改失败';
+    }
   }
   // 初始化数据
   async initData() {
@@ -170,5 +220,52 @@ export class UserService {
     await this.permissionRepository.save([permission1, permission2]);
     await this.roleRepository.save([role1, role2]);
     await this.userRepository.save([user1, user2]);
+  }
+
+  async freezeUserById(id: number) {
+    const foundUser = await this.userRepository.findOneBy({ id });
+
+    foundUser.isFrozen = true;
+    await this.userRepository.save(foundUser);
+  }
+
+  async findUsersByPage(
+    pageNo: number,
+    pageSize: number,
+    username: string,
+    email: string,
+    nickName: string,
+  ) {
+    const skipCount = (pageNo - 1) * pageSize;
+    const condition: Record<string, any> = {}
+    if (username) {
+      condition.username = Like(`%${username}%`)
+    }
+    if (email) {
+      condition.username = Like(`%${email}%`)
+    }
+    if (nickName) {
+      condition.username = Like(`%${nickName}%`)
+    }
+    const [user, totalCount] = await this.userRepository.findAndCount({
+      select: [
+        'id',
+        'username',
+        'nickName',
+        'email',
+        'phoneNumber',
+        'isFrozen',
+        'headPic',
+        'createTime',
+      ],
+      skip: skipCount,
+      take: pageSize,
+      where: condition
+    });
+
+    return {
+      list: user,
+      totalCount,
+    };
   }
 }

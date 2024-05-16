@@ -14,5 +14,7 @@ pnpm install --save @nestjs/jwt
 nest g guard login --flat --no-spec
 nest g guard permission --flat --no-spec
 # 返回格式拦截器  访问接口记录拦截器
-nest g interceptor format-response --flat
+nest g interceptor format-response --flat \n
 nest g interceptor invoke-record --flat
+# 修改下对 HttpException 的处理逻辑
+nest g filter custom-exception --flat

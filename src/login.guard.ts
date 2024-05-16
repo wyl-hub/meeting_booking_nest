@@ -52,6 +52,7 @@ export class LoginGuard implements CanActivate {
       request.user = {
         id: data.id,
         username: data.username,
+        email: data.email,
         isAdmin: data.isAdmin,
         roles: data.roles,
         permissions: data.permissions,
