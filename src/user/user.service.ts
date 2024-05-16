@@ -18,6 +18,7 @@ import { LoginUserVo } from './vo/login_user.vo';
 import { UserDetailVo } from './vo/user_info.vo';
 import { UpdatePasswordDto } from './dto/update_password.dto';
 import { TokenInfo } from './user.controller';
+import { UserListVo } from './vo/user_list_vo';
 
 @Injectable()
 export class UserService {
@@ -262,10 +263,9 @@ export class UserService {
       take: pageSize,
       where: condition
     });
-
-    return {
-      list: user,
-      totalCount,
-    };
+    const vo = new UserListVo()
+    vo.list = user
+    vo.totalCount = totalCount
+    return vo
   }
 }

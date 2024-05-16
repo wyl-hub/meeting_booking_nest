@@ -18,3 +18,5 @@ nest g interceptor format-response --flat \n
 nest g interceptor invoke-record --flat
 # 修改下对 HttpException 的处理逻辑
 nest g filter custom-exception --flat
+# 安装 swagger 的包
+pnpm install --save @nestjs/swagger

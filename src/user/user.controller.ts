@@ -21,6 +21,9 @@ import { ConfigService } from '@nestjs/config';
 import { Permission } from './entities/permission.entity';
 import { RequireLogin, UserInfo } from 'src/custom.decorator';
 import { UpdatePasswordDto } from './dto/update_password.dto';
+import { ApiBearerAuth, ApiBody, ApiProperty, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { UserDetailVo } from './vo/user_info.vo';
+import { UserListVo } from './vo/user_list_vo';
 
 export interface TokenInfo {
   id: number;
@@ -31,6 +34,13 @@ export interface TokenInfo {
   isAdmin: boolean;
 }
 
+class RefreshTokenVo {
+  @ApiProperty()
+  accessToke: string;
+  @ApiProperty()
+  refreshToken: string;
+}
+@ApiTags('用户管理模块')
 @Controller('user')
 export class UserController {
   @Inject(ConfigService)
@@ -74,9 +84,21 @@ export class UserController {
     };
   }
 
+  @ApiBody({
+    type: LoginUserDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: '用户名不存在/密码错误',
+    type: String,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '用户信息和token',
+    type: LoginUserVo,
+  })
   @Post('login')
   async userLogin(@Body() loginUser: LoginUserDto) {
-    console.log('loginUser', JSON.stringify(loginUser));
     const vo = await this.userService.login(loginUser, false);
     const { accessToken, refreshToken } = await this.disposeToken(vo.userInfo);
     vo.accessToken = accessToken;
@@ -84,6 +106,19 @@ export class UserController {
     return vo;
   }
 
+  @ApiBody({
+    type: LoginUserDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: '用户名不存在/密码错误',
+    type: String,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '用户信息和token',
+    type: LoginUserVo,
+  })
   @Post('admin_login')
   async adminLogin(@Body() loginUser: LoginUserDto) {
     const vo = await this.userService.login(loginUser, true);
@@ -93,12 +128,39 @@ export class UserController {
     return vo;
   }
 
+  @ApiBody({
+    type: RegisterUserDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: '验证码已失效/验证码不正确/用户已存在',
+    type: String,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '注册成功/失败',
+    type: String,
+  })
   @Post('register')
   async register(@Body() registerUser: RegisterUserDto) {
     return await this.userService.register(registerUser);
   }
 
   // 修改密码
+  @ApiBearerAuth()
+  @ApiBody({
+    type: UpdatePasswordDto
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    type: String,
+    description: '请输入该用户绑定邮箱/验证码已失效/验证码不正确'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: String,
+    description: '密码修改成功/密码修改失败'
+  })
   @Post('update_password')
   @RequireLogin()
   async updatePassword(
@@ -111,6 +173,18 @@ export class UserController {
     return await this.userService.updateUserPassword(user, updatePassword);
   }
 
+  @ApiQuery({
+    name: 'address',
+    type: String,
+    description: '邮箱地址',
+    required: true,
+    example: 'xxx@xx.com',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '发送成功',
+    type: String,
+  })
   @Get('register_captcha')
   async captcha(@Query('address') address: string) {
     const code = Math.random().toString().slice(2, 8);
@@ -131,12 +205,34 @@ export class UserController {
   }
 
   // 获取用户信息
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'success',
+    type: UserDetailVo
+  })
   @Get('info')
   @RequireLogin()
   async info(@UserInfo('id') id: number) {
     return await this.userService.findUserUpdateById(id);
   }
 
+  @ApiQuery({
+    name: 'refreshToken',
+    type: String,
+    description: '刷新 token',
+    required: true,
+    example: 'xxxxxxxxyyyyyyyyzzzzz',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'token 已失效，请重新登录',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '刷新成功',
+    type: RefreshTokenVo
+  })
   @Get('refresh')
   async refresh(@Query('refreshToken') refreshToken: string) {
     try {
@@ -157,12 +253,32 @@ export class UserController {
   }
 
   // 冻结账户
+  @ApiBearerAuth()
+  @ApiQuery({
+    name: 'id',
+    description: 'user_id',
+    type: Number
+  })
+  @ApiResponse({
+    type: String,
+    description: 'success'
+  })
+  @RequireLogin()
   @Get('freeze')
   async freeze(@Query('id') userId: number) {
     await this.userService.freezeUserById(userId);
     return 'success';
   }
 
+  @ApiBearerAuth()
+  @ApiQuery({
+    name: 'username',
+    // required
+  })
+  @ApiResponse({
+    type: UserListVo
+  })
+  @RequireLogin()
   @Get('list')
   async list(
     @Query('pageNo', ParseIntPipe) pageNo: number,
@@ -171,6 +287,12 @@ export class UserController {
     @Query('email') email: string,
     @Query('nickName') nickName: string,
   ) {
-    return await this.userService.findUsersByPage(pageNo, pageSize, username, email, nickName);
+    return await this.userService.findUsersByPage(
+      pageNo,
+      pageSize,
+      username,
+      email,
+      nickName,
+    );
   }
 }
