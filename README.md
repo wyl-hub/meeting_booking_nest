@@ -20,3 +20,7 @@ nest g interceptor invoke-record --flat
 nest g filter custom-exception --flat
 # 安装 swagger 的包
 pnpm install --save @nestjs/swagger
+
+
+# 创建 meeting-room 模块
+nest g resource meeting-room
