@@ -10,17 +10,17 @@ pnpm install nodemailer --save
 pnpm install --save @nestjs/config
 ##  jwt 模块
 pnpm install --save @nestjs/jwt
-# 登录 访问接口 鉴权
+## 登录 访问接口 鉴权
 nest g guard login --flat --no-spec
 nest g guard permission --flat --no-spec
-# 返回格式拦截器  访问接口记录拦截器
+## 返回格式拦截器  访问接口记录拦截器
 nest g interceptor format-response --flat \n
 nest g interceptor invoke-record --flat
-# 修改下对 HttpException 的处理逻辑
+## 修改下对 HttpException 的处理逻辑
 nest g filter custom-exception --flat
-# 安装 swagger 的包
+## 安装 swagger 的包
 pnpm install --save @nestjs/swagger
-
-
-# 创建 meeting-room 模块
+## 创建 meeting-room 模块
 nest g resource meeting-room
+## 创建预约 Booking 模块
+nest g resource booking
